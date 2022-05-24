@@ -1,2 +1,14 @@
 # mq_benchmark
-Benchmark for mindquantum
+Benchmark mindquantum with:
+
+- Tensorflow Quantum
+- Pennylane
+- qiskit
+- paddlepaddle quantum
+- qpanda
+
+On following questions:
+
+- VQE
+- QAOA
+- QNN
