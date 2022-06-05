@@ -64,7 +64,7 @@ def bench(data, iter_num: int):
     ham = Hamiltonian(hamiltonian_QubitOp)
 
     # todo: 程序闪退
-    # ham.sparse(total_circuit.n_qubits)
+    ham.sparse(total_circuit.n_qubits)
     
     molecule_pqc = sim.get_expectation_with_grad(
         ham,
