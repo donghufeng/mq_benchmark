@@ -1,85 +1,107 @@
 import os
 os.environ["OMP_NUMBER_THREADS"] = "3"
 
-import pyqpanda as pq 
+import time
+
+import tensorflow as tf
+import tensorflow_quantum as tfq
+
+import cirq
+import sympy
 import numpy as np
+
+import matplotlib.pyplot as plt
+from cirq.contrib.svg import SVGCircuit
 
 from openfermion.chem import MolecularData
 from openfermionpyscf import run_pyscf
 import mindquantum as mq
 
-import time
 
 def parse_braces(w: str, lb: str, rb: str) -> str:
     i = w.find(lb)
     j = w.find(rb)
     return w[i+1:j]
 
-def trans_hamiltonian(mq_ham):
-    ops = dict()
-    for l in str(mq_ham).splitlines():
+def trans_hamiltonian(mq_hamiltonion, qreg):
+    gate_map = {
+        "X": cirq.ops.X,
+        "Y": cirq.ops.Y,
+        "Z": cirq.ops.Z,
+    }
+    ham = cirq.PauliSum()
+    for l in str(mq_hamiltonion).splitlines():
         op = parse_braces(l, "[", "]")
         idx = l.find("[")
         x = float(l[:idx])
-        ops[op] = x
-    return pq.PauliOperator(ops)
+
+        if op == "":
+            ham += x
+            continue
+
+        v = []
+        for w in op.split(" "):
+            g = gate_map[w[0]]
+            idx = int(w[1:])
+            v.append(g.on(qreg[idx]))
+        
+        ham += x * cirq.PauliString(*tuple(v))
+    return ham
 
 from mindquantum.core import gates as mgates
 from mindquantum.core import Circuit as mcircuit
 
-def trans_circuit_mindquantum_qpanda(circuit: mcircuit, n_qubits: int, machine, q):
-    vqc = pq.VariationalQuantumCircuit()
+def trans_circuit_mindquantum_cirq(mcircuit: mcircuit, n_qubits: int, qreg, pr_table):
+    circ = cirq.Circuit()
 
     def self_herm_non_params(gate):
         ctrls = gate.ctrl_qubits
         objs = gate.obj_qubits
         if ctrls:
             # must be CNOT
-            g = pq.VariationalQuantumGate_CNOT
-            g = g(q[ctrls[0]], q[objs[0]])
-            vqc.insert(g)
+            circ.append([cirq.ops.CNOT.on(qreg[ctrls[0]], qreg[objs[0]])])
         else:
             # must be H
             gate_map = {
-                "X": pq.VariationalQuantumGate_X,
-                "Y": pq.VariationalQuantumGate_Y,
-                "Z": pq.VariationalQuantumGate_Z,
-                "H": pq.VariationalQuantumGate_H,
+                "X": cirq.ops.X,
+                "Y": cirq.ops.Y,
+                "Z": cirq.ops.Z,
+                "H": cirq.ops.H,
             }
             g = gate_map[gate.name.upper()]
-            g = g(q[objs[0]])
-            vqc.insert(g)
-    
+            circ.append([g.on(qreg[objs[0]])])
+
     def params_gate_trans(gate, pr_table):
         gate_map = {
-            "RX": pq.VariationalQuantumGate_RX,
-            "RY": pq.VariationalQuantumGate_RY,
-            "RZ": pq.VariationalQuantumGate_RZ,
+            "RX": cirq.ops.rx,
+            "RY": cirq.ops.ry,
+            "RZ": cirq.ops.rz,
         }
         objs = gate.obj_qubits
         if gate.ctrl_qubits:
             raise ValueError(f"Can't convert {gate} with params.")
+
         g = gate_map[gate.name.upper()]
         if gate.parameterized:
             # parameter
             acc = None
             for k,v in gate.coeff.items():
                 if k not in pr_table:
-                    pr_table[k] = pq.var(1, True)
+                    pr_table[k] = sympy.Symbol(k)
                 if acc is None:
                     acc = v * pr_table[k]
                 else:
                     acc += v * pr_table[k]
-            g = g(q[objs[0]], acc)
+            g = g(acc).on(qreg[objs[0]])
         else:
             # no parameter
-            g = g(q[objs[0]], gate.coeff.const)
-        vqc.insert(g)
+            g = g(gate.coeff.const).on(qreg[objs[0]])
+        circ.append([g])
 
     cnt1, cnt2 = 0, 0
-    circuit = circuit.remove_barrier()
-    pr_table = dict()
-    for g in circuit:
+    mcircuit = mcircuit.remove_barrier()
+    # pr_table = dict()
+    for g in mcircuit:
         if isinstance(g, (
             mgates.XGate, mgates.HGate
         )):
@@ -93,8 +115,7 @@ def trans_circuit_mindquantum_qpanda(circuit: mcircuit, n_qubits: int, machine, 
         else:
             raise ValueError(f"Haven't implemented convertion for gate {g}")
     print(f"cnt1={cnt1}, cnt2={cnt2}")
-    return vqc
-
+    return circ
 
 def bench(data, iter_num):
     molecule_of = MolecularData(
@@ -102,6 +123,7 @@ def bench(data, iter_num):
         basis="sto3g", 
         multiplicity=1
     )
+
     molecule_of = run_pyscf(
         molecule_of, 
         run_scf=1, 
@@ -110,9 +132,13 @@ def bench(data, iter_num):
     )
     molecule_of.save()
     molecule_file = molecule_of.filename
+    # print(molecule_file)
+
     hartreefock_wfn_circuit = mq.Circuit([
         mq.X.on(i) for i in range(molecule_of.n_electrons)
     ])
+    print(hartreefock_wfn_circuit)
+
     ansatz_circuit, \
     init_amplitudes, \
     ansatz_parameter_names, \
@@ -124,36 +150,39 @@ def bench(data, iter_num):
     total_circuit.summary()
     print("Number of parameters: %d" % (len(ansatz_parameter_names)))
 
-    # qpanda
-    machine = pq.init_quantum_machine(pq.QMachineType.CPU)
-    qubit_list = machine.qAlloc_many(n_qubits)
+    # transform mindquantum to cirq
+    qreg = cirq.LineQubit.range(n_qubits)        
+    ham = trans_hamiltonian(hamiltonian_QubitOp, qreg)
+    pr_table = dict()
+    circ = trans_circuit_mindquantum_cirq(total_circuit, n_qubits, qreg, pr_table)
 
-    vqc = trans_circuit_mindquantum_qpanda(
-        total_circuit, n_qubits, machine, qubit_list)
+    expectation_calculation = tfq.layers.Expectation(
+        differentiator=tfq.differentiators.ForwardDifference(grid_spacing=0.01)
+    )
 
-    ham = trans_hamiltonian(hamiltonian_QubitOp)
+    theta = np.zeros((1, len(pr_table))).astype(np.float32)
+    theta_tensor = tf.convert_to_tensor(theta)
+    print(theta_tensor.shape)
 
-    loss = pq.qop(vqc, ham, machine, qubit_list)
-
-    optimizer = pq.MomentumOptimizer.minimize(loss, 0.05, 0.9)
-
-    leaves = optimizer.get_variables()
-
-    print("Start training.")
+    print(f"Start training.")
     start_time = time.time()
     for i in range(iter_num):
-        optimizer.run(leaves, 0)
-        loss_value = optimizer.get_loss()
-        if i % 5 == 0:
-            print(f"step {i}: loss = {loss_value}")
+        with tf.GradientTape() as g:
+            g.watch(theta_tensor)
+            output = expectation_calculation(
+                circ,
+                operators=ham,
+                symbol_names = list(pr_table.keys()),
+                symbol_values=theta_tensor,
+            )
+            grad = g.gradient(output, theta_tensor)
+            theta_tensor -= grad
+            if i % 1 == 0:
+                print(f"Step {i}: loss = {output[0]}")
     end_time = time.time()
-    print(f"Used time: {end_time-start_time}")
-    return end_time - start_time
-
+    print(f"Used time: {end_time - start_time}")
 
 if __name__ == "__main__":
-    # data = [["H", [0.0, 0.0, -0.6614]], ["H", [0.0, 0.0, 0.6614]]]
-    data = [["Li", [0, 0, 0]], ["H", [1, 0, 0]]]
-    iter_num = 100
-
+    data = [["H", [0.0, 0.0, -0.6614]], ["H", [0.0, 0.0, 0.6614]]]
+    iter_num = 50
     bench(data, iter_num)
