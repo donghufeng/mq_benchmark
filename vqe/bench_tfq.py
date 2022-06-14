@@ -84,19 +84,16 @@ def trans_circuit_mindquantum_cirq(mcircuit: mcircuit, n_qubits: int, qreg, pr_t
         g = gate_map[gate.name.upper()]
         if gate.parameterized:
             # parameter
-            acc = None
+            # tfq can't support Rx(alpha + beta), 
+            # so have to convert to Rx(alpha)Rx(beta)
             for k,v in gate.coeff.items():
                 if k not in pr_table:
                     pr_table[k] = sympy.Symbol(k)
-                if acc is None:
-                    acc = v * pr_table[k]
-                else:
-                    acc += v * pr_table[k]
-            g = g(acc).on(qreg[objs[0]])
+                circ.append([g(v*pr_table[k]).on(qreg[objs[0]])])
         else:
             # no parameter
             g = g(gate.coeff.const).on(qreg[objs[0]])
-        circ.append([g])
+            circ.append([g])
 
     cnt1, cnt2 = 0, 0
     mcircuit = mcircuit.remove_barrier()
@@ -183,6 +180,7 @@ def bench(data, iter_num):
     print(f"Used time: {end_time - start_time}")
 
 if __name__ == "__main__":
-    data = [["H", [0.0, 0.0, -0.6614]], ["H", [0.0, 0.0, 0.6614]]]
+    # data = [["H", [0.0, 0.0, -0.6614]], ["H", [0.0, 0.0, 0.6614]]]
+    data = [["Li", [0, 0, 0]], ["H", [1, 0, 0]]]
     iter_num = 50
     bench(data, iter_num)
