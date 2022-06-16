@@ -2,7 +2,7 @@ import json
 import os
 import sys
 
-os.environ["OMP_NUMBER_THREADS"] = "3"
+# os.environ["OMP_NUMBER_THREADS"] = "3"
 
 import bench_mindquantum
 # import bench_paddle

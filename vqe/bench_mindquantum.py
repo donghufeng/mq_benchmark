@@ -1,5 +1,5 @@
 import os
-os.environ["OMP_NUMBER_THREADS"] = "3"
+# os.environ["OMP_NUMBER_THREADS"] = "3"
 
 import time
 

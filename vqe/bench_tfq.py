@@ -1,4 +1,5 @@
 import os
+
 os.environ["OMP_NUMBER_THREADS"] = "3"
 
 import time
@@ -18,11 +19,6 @@ from openfermionpyscf import run_pyscf
 import mindquantum as mq
 
 
-def parse_braces(w: str, lb: str, rb: str) -> str:
-    i = w.find(lb)
-    j = w.find(rb)
-    return w[i+1:j]
-
 def trans_hamiltonian(mq_hamiltonion, qreg):
     gate_map = {
         "X": cirq.ops.X,
@@ -30,28 +26,18 @@ def trans_hamiltonian(mq_hamiltonion, qreg):
         "Z": cirq.ops.Z,
     }
     ham = cirq.PauliSum()
-    for l in str(mq_hamiltonion).splitlines():
-        op = parse_braces(l, "[", "]")
-        idx = l.find("[")
-        x = float(l[:idx])
-
-        if op == "":
-            ham += x
-            continue
-
-        v = []
-        for w in op.split(" "):
-            g = gate_map[w[0]]
-            idx = int(w[1:])
-            v.append(g.on(qreg[idx]))
-        
-        ham += x * cirq.PauliString(*tuple(v))
+    for term, coeff in mq_hamiltonion.terms:
+        ham += coeff.const * cirq.PauliString(
+            *tuple([gate_map[p].on(idx) for idx, p in term.items()]))
     return ham
+
 
 from mindquantum.core import gates as mgates
 from mindquantum.core import Circuit as mcircuit
 
-def trans_circuit_mindquantum_cirq(mcircuit: mcircuit, n_qubits: int, qreg, pr_table):
+
+def trans_circuit_mindquantum_cirq(mcircuit: mcircuit, n_qubits: int, qreg,
+                                   pr_table):
     circ = cirq.Circuit()
 
     def self_herm_non_params(gate):
@@ -84,12 +70,12 @@ def trans_circuit_mindquantum_cirq(mcircuit: mcircuit, n_qubits: int, qreg, pr_t
         g = gate_map[gate.name.upper()]
         if gate.parameterized:
             # parameter
-            # tfq can't support Rx(alpha + beta), 
+            # tfq can't support Rx(alpha + beta),
             # so have to convert to Rx(alpha)Rx(beta)
-            for k,v in gate.coeff.items():
+            for k, v in gate.coeff.items():
                 if k not in pr_table:
                     pr_table[k] = sympy.Symbol(k)
-                circ.append([g(v*pr_table[k]).on(qreg[objs[0]])])
+                circ.append([g(v * pr_table[k]).on(qreg[objs[0]])])
         else:
             # no parameter
             g = g(gate.coeff.const).on(qreg[objs[0]])
@@ -99,14 +85,10 @@ def trans_circuit_mindquantum_cirq(mcircuit: mcircuit, n_qubits: int, qreg, pr_t
     mcircuit = mcircuit.remove_barrier()
     # pr_table = dict()
     for g in mcircuit:
-        if isinstance(g, (
-            mgates.XGate, mgates.HGate
-        )):
+        if isinstance(g, (mgates.XGate, mgates.HGate)):
             cnt1 += 1
             self_herm_non_params(g)
-        elif isinstance(g, (
-            mgates.RX, mgates.RY, mgates.RZ
-        )):
+        elif isinstance(g, (mgates.RX, mgates.RY, mgates.RZ)):
             cnt2 += 1
             params_gate_trans(g, pr_table)
         else:
@@ -114,26 +96,17 @@ def trans_circuit_mindquantum_cirq(mcircuit: mcircuit, n_qubits: int, qreg, pr_t
     print(f"cnt1={cnt1}, cnt2={cnt2}")
     return circ
 
-def bench(data, iter_num):
-    molecule_of = MolecularData(
-        geometry=data, 
-        basis="sto3g", 
-        multiplicity=1
-    )
 
-    molecule_of = run_pyscf(
-        molecule_of, 
-        run_scf=1, 
-        run_ccsd=1, 
-        run_fci=1
-    )
+def bench(data, iter_num):
+    molecule_of = MolecularData(geometry=data, basis="sto3g", multiplicity=1)
+
+    molecule_of = run_pyscf(molecule_of, run_scf=1, run_ccsd=1, run_fci=1)
     molecule_of.save()
     molecule_file = molecule_of.filename
     # print(molecule_file)
 
-    hartreefock_wfn_circuit = mq.Circuit([
-        mq.X.on(i) for i in range(molecule_of.n_electrons)
-    ])
+    hartreefock_wfn_circuit = mq.Circuit(
+        [mq.X.on(i) for i in range(molecule_of.n_electrons)])
     print(hartreefock_wfn_circuit)
 
     ansatz_circuit, \
@@ -148,14 +121,14 @@ def bench(data, iter_num):
     print("Number of parameters: %d" % (len(ansatz_parameter_names)))
 
     # transform mindquantum to cirq
-    qreg = cirq.LineQubit.range(n_qubits)        
+    qreg = cirq.LineQubit.range(n_qubits)
     ham = trans_hamiltonian(hamiltonian_QubitOp, qreg)
     pr_table = dict()
-    circ = trans_circuit_mindquantum_cirq(total_circuit, n_qubits, qreg, pr_table)
+    circ = trans_circuit_mindquantum_cirq(total_circuit, n_qubits, qreg,
+                                          pr_table)
 
     expectation_calculation = tfq.layers.Expectation(
-        differentiator=tfq.differentiators.ForwardDifference(grid_spacing=0.01)
-    )
+        differentiator=tfq.differentiators.Adjoint())
 
     theta = np.zeros((1, len(pr_table))).astype(np.float32)
     theta_tensor = tf.convert_to_tensor(theta)
@@ -169,7 +142,7 @@ def bench(data, iter_num):
             output = expectation_calculation(
                 circ,
                 operators=ham,
-                symbol_names = list(pr_table.keys()),
+                symbol_names=list(pr_table.keys()),
                 symbol_values=theta_tensor,
             )
             grad = g.gradient(output, theta_tensor)
@@ -178,6 +151,7 @@ def bench(data, iter_num):
                 print(f"Step {i}: loss = {output[0]}")
     end_time = time.time()
     print(f"Used time: {end_time - start_time}")
+
 
 if __name__ == "__main__":
     # data = [["H", [0.0, 0.0, -0.6614]], ["H", [0.0, 0.0, 0.6614]]]
