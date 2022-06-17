@@ -37,9 +37,9 @@ def bench(hyperparams={}):
 
     edges = list(graph.edges)
     nodes = list(graph.nodes)
-    n = len(graph.nodes)
+    n_qubits = len(graph.nodes)
 
-    circ = circuit_QAOA(n_qubits=n, n_layers=n_layers, edges=edges, nodes=nodes)
+    circ = circuit_QAOA(n_qubits, n_layers, edges, nodes)
 
     SEED = 1024  # 设置全局随机数种子
     paddle.seed(SEED)

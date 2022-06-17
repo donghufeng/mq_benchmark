@@ -3,6 +3,7 @@ import benchmark_mindquantum
 import benchmark_paddle
 import benchmark_qiskit
 import benchmark_qpanda
+import benchmark_tfq
 
 import networkx as nx
 import time
@@ -17,7 +18,7 @@ def generate_graphs(n_nodes):
     elif n_nodes == 5:
         edges = [(0, 1), (1, 2), (2, 3), (3, 4), (0, 4), (0, 2)]
     elif n_nodes == 6:
-        pass
+        edges = [(0, 4), (0, 5), (1, 2), (1, 3), (1, 4), (1, 5), (2, 4), (3, 5)]
     elif n_nodes == 7:
         edges = [(0, 4), (0, 5), (0, 6), (1, 4), (1, 5), (2, 5), (2, 6), (3, 5), (3, 6)]
 
@@ -30,7 +31,8 @@ if __name__ == '__main__':
 
     hp = {'graph': graph,
           'n_layers': 4,
-          'shots': 1000}
+          'shots': 1000,
+          'iter_num': 100}
 
     mq_start = time.time()
     benchmark_mindquantum.bench(hp)
@@ -52,8 +54,13 @@ if __name__ == '__main__':
     benchmark_qiskit.bench(hp)
     qiskit_execution = time.time() - qiskit_start
 
+    tfq_start = time.time()
+    benchmark_tfq.bench(hp)
+    tfq_execution = time.time() - tfq_start
+
     print("Execution time with MindQuantum:", mq_execution)
     print("Execution time with PaddleQuantum:", pd_execution)
     print("Execution time with QPanda:", qp_execution)
     print("Execution time with PennyLane:", pl_execution)
     print("Execution time with Qiskit:", qiskit_execution)
+    print("Execution time with Tensorflow Quantum:", tfq_execution)

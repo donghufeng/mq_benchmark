@@ -46,7 +46,7 @@ def bench(hyperparams={}):
     maxcut = MaxCutAnsatz(list(graph.edges), n_layers)
 
     circ = maxcut.circuit  # 已对所有量子比特作用H门
-    ham = Hamiltonian(-maxcut.hamiltonian)  # 生成哈密顿量
+    ham = Hamiltonian(-maxcut.hamiltonian)
     # print(circ)
     # print(ham)
 

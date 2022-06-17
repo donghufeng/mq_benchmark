@@ -46,7 +46,7 @@ def bench(hyperparams={}):
     shots = hyperparams['shots']
 
     edges = list(graph.edges)
-    n = len(graph.nodes)
+    n_qubits = len(graph.nodes)
 
     problem_ham = {}
     for (u, v) in edges:
@@ -62,7 +62,7 @@ def bench(hyperparams={}):
     gamma = var(np.ones((n_layers, 1), dtype='float64'), True)
 
     machine = init_quantum_machine(QMachineType.CPU)
-    qubit_list = machine.qAlloc_many(n)
+    qubit_list = machine.qAlloc_many(n_qubits)
     vqc = VariationalQuantumCircuit()
 
     for i in qubit_list:

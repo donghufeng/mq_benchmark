@@ -10,5 +10,11 @@ qiskit_aer==0.10.4
 qiskit_ignis==0.7.1
 qiskit_ibmq_provider==0.19.1
 qiskit_optimization==0.3.2
+cirq==0.14.1
+cirq_core==0.14.1
+tensorflow==2.7.0
+tensorflow_quantum==0.6.1
 numpy==1.22.4
 networkx==2.8.2
+matplotlib==3.5.1
+sympy==1.9

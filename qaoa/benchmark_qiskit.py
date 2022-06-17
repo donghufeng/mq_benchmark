@@ -24,11 +24,11 @@ def bench(hyperparams={}):
     n_layers = hyperparams['n_layers']
     shots = hyperparams['shots']
 
-    n = len(graph.nodes)
-    edges = list(graph.edges)
+    n_qubits = len(graph.nodes)
+    edges = list(graph.edges) 
 
     # Computing the weight matrix from the random graph
-    adjacent_matrix = np.zeros([n, n])
+    adjacent_matrix = np.zeros([n_qubits, n_qubits])
     for u, v in edges:
         adjacent_matrix[u][v] += 1
     # print(adjacent_matrix)
@@ -41,7 +41,7 @@ def bench(hyperparams={}):
     # get the corresponding Ising Hamiltonian
     qubit_op, offset = qp.to_ising()
     # print("Offset:", offset)
-    # print("Ising Hamiltonian:\n", str(qubit_op))
+    # print("Ising Hamiltonian:\n_qubits", str(qubit_op))
 
     algorithm_globals.random_seed = 10598
 
