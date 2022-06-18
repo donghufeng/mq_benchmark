@@ -76,7 +76,7 @@ def bench(hyperparams={}):
 
     leaves = optimizer.get_variables()
 
-    steps = 100
+    steps = hyperparams['iter_num']
     for i in range(steps):
         optimizer.run(leaves, 0)
         loss_value = optimizer.get_loss()

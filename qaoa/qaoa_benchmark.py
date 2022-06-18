@@ -1,3 +1,5 @@
+import sys
+
 import benchmark_pennylane
 import benchmark_mindquantum
 import benchmark_paddle
@@ -26,13 +28,27 @@ def generate_graphs(n_nodes):
 
 
 if __name__ == '__main__':
+    args = sys.argv
+    print(args)
+    if len(args) < 4:
+        Exception("Please enter the parameters n_nodes,n_layers,shots,iter_num in sequence")
 
-    graph = generate_graphs(n_nodes=7)
+    n_nodes = int(args[1])
+    n_layers = int(args[2])
+    shots = int(args[3])
+    iter_num = int(args[4])
+
+    graph = generate_graphs(n_nodes)
+
+    # hp = {'graph': graph,
+    #       'n_layers': 4,
+    #       'shots': 1000,
+    #       'iter_num': 100}
 
     hp = {'graph': graph,
-          'n_layers': 4,
-          'shots': 1000,
-          'iter_num': 100}
+          'n_layers': n_layers,
+          'shots': shots,
+          'iter_num': iter_num}
 
     mq_start = time.time()
     benchmark_mindquantum.bench(hp)
@@ -54,13 +70,13 @@ if __name__ == '__main__':
     benchmark_qiskit.bench(hp)
     qiskit_execution = time.time() - qiskit_start
 
-    tfq_start = time.time()
-    benchmark_tfq.bench(hp)
-    tfq_execution = time.time() - tfq_start
+    # tfq_start = time.time()
+    # benchmark_tfq.bench(hp)
+    # tfq_execution = time.time() - tfq_start
 
     print("Execution time with MindQuantum:", mq_execution)
     print("Execution time with PaddleQuantum:", pd_execution)
     print("Execution time with QPanda:", qp_execution)
     print("Execution time with PennyLane:", pl_execution)
     print("Execution time with Qiskit:", qiskit_execution)
-    print("Execution time with Tensorflow Quantum:", tfq_execution)
+    # print("Execution time with Tensorflow Quantum:", tfq_execution)

@@ -1,25 +1,9 @@
 from mindquantum.core import Circuit, Hamiltonian
 from mindquantum.simulator import Simulator
 from mindquantum.algorithm.nisq.qaoa import MaxCutAnsatz
-import random
-import numpy as np
-
-
-def gradient_decs(grad_ops, params, steps):
-    exp_val_1, g = grad_ops(params)
-    # print(exp_val)
-    # print(g)
-    alpha = 0.05  # 学习率
-    for i in range(steps):
-        for j in range(len(params)):
-            params[j] = params[j] - alpha * g[0][0][j]
-        exp_val_2, g = grad_ops(params)
-        if exp_val_1[0][0] - exp_val_2[0][0] < 1e-6:
-            return params
-        if exp_val_2[0][0] < exp_val_1[0][0]:
-            exp_val_1 = exp_val_2
-
-    return params
+from mindquantum.framework import MQAnsatzOnlyLayer
+import mindspore.nn as nn
+import mindspore as ms
 
 
 def bench(hyperparams={}):
@@ -50,20 +34,24 @@ def bench(hyperparams={}):
     # print(circ)
     # print(ham)
 
-    sim = Simulator('projectq', circ.n_qubits)  # 创建模拟器，backend使用‘projectq’，能模拟5个比特（'circ'线路中包含的比特数）
+    # 搭建待训练量子神经网络以获取最优参数
+    ms.context.set_context(mode=ms.context.PYNATIVE_MODE, device_target="CPU")
 
-    if 'params' in hyperparams:
-        params = hyperparams['params']
-    else:
-        # 搭建待训练量子神经网络以获取最优参数
-        grad_ops = sim.get_expectation_with_grad(ham, circ)  # 获取计算变分量子线路的期望值和梯度的算子（相当于cost_function）
+    sim = Simulator('projectq', circ.n_qubits)
 
-        params = np.array([random.random() for i in range(len(circ.params_name))], dtype=complex)
-        steps = 100
-        gradient_decs(grad_ops, params, steps)
+    grad_ops = sim.get_expectation_with_grad(ham, circ)  # 获取计算变分量子线路的期望值和梯度的算子
 
-    # 获取线路参数
-    params_dict = dict(zip(circ.params_name, params))
+    net = MQAnsatzOnlyLayer(grad_ops)  # 生成待训练的神经网络
+    opti = nn.Adam(net.trainable_params(), learning_rate=0.05)  # 设置针对网络中所有可训练参数、学习率为0.05的Adam优化器
+    train_net = nn.TrainOneStepCell(net, opti)  # 对神经网络进行一步训练
+
+    steps = hyperparams['iter_num']
+    for i in range(steps):
+        cut = (len(graph.edges) - train_net()) / 2  # 将神经网络训练一步并计算得到的结果（切割边数）。注意：每当'train_net()'运行一次，神经网络就训练了一步
+        if i % 10 == 0:
+            print("train step:", i, ", cut:", cut)  # 每训练10步，打印当前训练步数和当前得到的切割边数
+
+    params_dict = dict(zip(circ.params_name, net.weight.asnumpy()))  # 获取训练得到的最优参数
     # print(params_dict)
 
     # 测量

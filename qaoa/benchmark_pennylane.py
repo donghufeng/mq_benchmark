@@ -58,7 +58,7 @@ def bench(hyperparams={}):
         single_param_for_all_layers = [random.random() for i in range(n_layers)]
         params = np.array([single_param_for_all_layers, single_param_for_all_layers], requires_grad=True)  # 将每个初始参数设置为 0.5
         optimizer = qml.GradientDescentOptimizer()
-        steps = 100
+        steps = hyperparams['iter_num']
         for i in range(steps):
             params = optimizer.step(cost_function, params)
 

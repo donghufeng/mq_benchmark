@@ -1,4 +1,5 @@
-mindquantum==0.6.2
+mindquantum==0.6.0
+mindspore==1.6.1
 paddle==1.0.2
 paddle_quantum==2.2.0
 paddlepaddle==2.3.0
@@ -15,6 +16,7 @@ cirq_core==0.14.1
 tensorflow==2.7.0
 tensorflow_quantum==0.6.1
 numpy==1.22.4
+networkx==2.8.2
 networkx==2.8.2
 matplotlib==3.5.1
 sympy==1.9

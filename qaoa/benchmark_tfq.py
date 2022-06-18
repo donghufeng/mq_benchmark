@@ -5,7 +5,6 @@ import cirq
 
 import sympy
 import numpy as np
-import networkx as nx
 import pandas as pd
 
 
@@ -17,7 +16,8 @@ def trans_hamiltonian(mq_hamiltonion, qreg):
     }
     ham = cirq.PauliSum()
     for term in mq_hamiltonion.terms:
-        coef = float(mq_hamiltonion.terms[term].const)
+        coef = float(mq_hamiltonion.terms[term])  # for mindquantum==0.6.0
+        # coef = float(mq_hamiltonion.terms[term].const)  # for mindquantum==0.6.2
 
         if len(term) == 0:
             ham += coef

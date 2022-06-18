@@ -57,7 +57,7 @@ def bench(hyperparams={}):
     loss_func = ExpecVal(Hamiltonian(ham_list))
 
     # 训练
-    steps = 100
+    steps = hyperparams['iter_num']
     for i in range(steps):
         state = circ()
         # 计算梯度并优化
