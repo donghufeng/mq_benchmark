@@ -71,4 +71,4 @@ def bench(hyperparams={}):
     # 测量
     state = circ()
     probs_measured = state.measure(shots=shots, plot=False)
-    print("Probability distribution of measurement result with PaddleQuantum:\n", probs_measured)
+    print("Measurement result with PaddleQuantum:\n", probs_measured)

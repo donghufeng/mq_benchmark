@@ -63,6 +63,7 @@ def bench(hyperparams={}):
 
     machine = init_quantum_machine(QMachineType.CPU)
     qubit_list = machine.qAlloc_many(n_qubits)
+
     vqc = VariationalQuantumCircuit()
 
     for i in qubit_list:
@@ -71,8 +72,10 @@ def bench(hyperparams={}):
     for i in range(n_layers):
         vqc.insert(qaoa_layer(qubit_list, ham.toHamiltonian(1), beta[i], gamma[i]))
 
+    print(vqc)
+
     loss = qop(vqc, ham, machine, qubit_list)  # 问题哈密顿量的期望
-    optimizer = MomentumOptimizer.minimize(loss, 0.05, 0.9)  # 使用梯度下降优化器来优化参数
+    optimizer = MomentumOptimizer.minimize(loss, 0.02, 0.9)  # 使用梯度下降优化器来优化参数
 
     leaves = optimizer.get_variables()
 

@@ -1,7 +1,16 @@
 import pennylane as qml
 from pennylane import qaoa
-from pennylane import numpy as np
 import random
+
+
+def to_bin_str(num, n):
+    """Octal to binary conversion.
+
+    Returns:
+        binary string with length n.
+    """
+    binary_str = bin(num)[2:].zfill(n)
+    return binary_str
 
 
 def bench(hyperparams={}):
@@ -56,7 +65,7 @@ def bench(hyperparams={}):
         params = hyperparams['params']
     else:
         single_param_for_all_layers = [random.random() for i in range(n_layers)]
-        params = np.array([single_param_for_all_layers, single_param_for_all_layers], requires_grad=True)  # 将每个初始参数设置为 0.5
+        params = qml.numpy.array([single_param_for_all_layers, single_param_for_all_layers], requires_grad=True)  # 将每个初始参数设置为 0.5
         optimizer = qml.GradientDescentOptimizer()
         steps = hyperparams['iter_num']
         for i in range(steps):
@@ -65,4 +74,9 @@ def bench(hyperparams={}):
         # print("Optimal Parameters: \n", params)
 
     probs_measured = probability_circuit(params[0], params[1])
-    print("Probability distribution of measurement result with PennyLane: \n", probs_measured)
+
+    result_dict = dict()
+    for i in range(2 ** n_wires):
+        result_dict[to_bin_str(i, n_wires)] = probs_measured[i].numpy()
+
+    print("Measurement result with PennyLane: \n", result_dict)

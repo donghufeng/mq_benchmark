@@ -148,7 +148,7 @@ def bench(hyperparams={}):
     results = dict()
     for sample in sample_results:
         sample_str = ""
-        for q in sample[8:]:
+        for q in sample[-n_qubits:]:
             sample_str += str(int(q))
 
         if sample_str not in results:
