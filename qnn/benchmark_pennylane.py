@@ -42,7 +42,7 @@ def bench(n_qubits, epoch, batch, train_samples):
     @qml.batch_input(argnum=[0])
     @qml.qnode(dev)
     def circuit(input, ansatz_pr, n_wires):
-        qml.AngleEmbedding(input, range(n_wires), rotation="Z")
+        qml.AngleEmbedding(input, range(n_wires), rotation="Y")
         my_ansatz(ansatz_pr, n_wires)
         return qml.expval(qml.PauliZ(0))
 

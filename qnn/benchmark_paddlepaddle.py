@@ -71,22 +71,19 @@ def datapoints_transform_to_state(data, n_qubits):
                 state_tmp = np.dot(zero_state, Ry(np.arcsin(data[sam][1])).T)
                 state_tmp = np.dot(state_tmp, Rz(np.arccos(data[sam][1] ** 2)).T)
                 res_state = np.kron(res_state, state_tmp)
+            
             '''
 
-            state_tmp = np.dot(zero_state, Rz(data[sam][i]).T)
+            state_tmp = np.dot(zero_state, Ry(data[sam][i]).T)
+
             res_state = np.kron(res_state, state_tmp)
+            
             
         res.append(res_state)
     res = np.array(res, dtype=paddle_quantum.get_dtype())
 
     return res
 
-
-circ = Circuit()
-print("作为测试我们输入以上的经典信息:")
-print("(x_0, x_1) = (1, 0)")
-print("编码后输出的2比特量子态为:")
-print(datapoints_transform_to_state(np.array([[1, 0]]), n_qubits=2))
 
 # 生成只作用在第一个量子比特上的泡利 Z 算符
 # 其余量子比特上都作用单位矩阵
@@ -227,7 +224,7 @@ def QClassifier(Ntrain, Ntest, gap, N, DEPTH, EPOCH, LR, BATCH, seed_paras, seed
                 state_in=input_state, label=train_y[itr * BATCH : (itr + 1) * BATCH]
             )  # 对此时量子电路优化
             # 显示迭代过程中performance变化
-            if i % 30 == 5:
+            if itr == 0:
                 # 计算测试集上的正确率 test_acc
                 input_state_test = paddle.to_tensor(
                     datapoints_transform_to_state(test_x, N)
@@ -238,13 +235,12 @@ def QClassifier(Ntrain, Ntest, gap, N, DEPTH, EPOCH, LR, BATCH, seed_paras, seed
                 print(
                     "epoch:",
                     ep,
-                    "iter:",
-                    itr,
                     "loss: %.4f" % loss.numpy()
                 )
                 # 存储正确率 acc 等信息
                 summary_iter.append(itr + ep * N_train)
                 summary_test_acc.append(test_acc)
+
 
             # 反向传播极小化损失函数
             loss.backward()
@@ -254,6 +250,7 @@ def QClassifier(Ntrain, Ntest, gap, N, DEPTH, EPOCH, LR, BATCH, seed_paras, seed
     # 得到训练后电路
     print("训练后的电路：")
     print(cir)
+    print(summary_test_acc)
 
     return summary_test_acc
 
@@ -277,5 +274,5 @@ def bench(n_qubits, epoch, batch, train_samples):
 
 
 if __name__=='__main__':
-    res = bench(4, 5, 20, 200)
+    res = bench(8, 5, 20, 200)
     print(res)

@@ -26,7 +26,7 @@ def bench(n_qubits, epoch, batch, train_samples):
     def convert_to_circuit(features, n_qubits, qreg, pr_table):
         mencoder = mcircuit()
         for i, value in enumerate(features):
-            mencoder.ry(value * np.pi, i)
+            mencoder.ry(value, i)
         return mq_to_tfq.trans_circuit_mindquantum_cirq(mencoder, n_qubits, qreg, pr_table)
 
 

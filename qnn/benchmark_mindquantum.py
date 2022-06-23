@@ -20,7 +20,7 @@ def bench(n_qubits, epoch, batch, train_samples):
     # encoder
     encoder = Circuit()
     for i in range(n_qubits):
-        encoder.rz(f"alpha_{i}", i)
+        encoder.ry(f"alpha_{i}", i)
 
     # ansatz
     ansatz = Circuit()

@@ -27,7 +27,7 @@ def bench(n_qubits, epoch, batch, train_samples):
     # 生成encoder
     mencoder = mcircuit()
     for i in range(n_qubits):
-        mencoder.rz(f"alpha_{i}", i)
+        mencoder.ry(f"alpha_{i}", i)
 
     # 生成ansatz
     mansatz = mcircuit()
