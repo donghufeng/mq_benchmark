@@ -35,7 +35,7 @@ def bench(n_qubits, epoch, batch, train_samples):
 
     for i in range(n_qubits):
         ansatz.ry(f"beta_4_{i}", i)
-    circuit = encoder + ansatz
+    circuit = encoder.as_encoder() + ansatz.as_ansatz()
     print(circuit)
 
     from mindquantum.core import QubitOperator
@@ -51,14 +51,10 @@ def bench(n_qubits, epoch, batch, train_samples):
     # model
     ms.context.set_context(mode=ms.context.PYNATIVE_MODE, device_target="CPU")
     ms.set_seed(1)
-    sim = Simulator("projectq", circuit.n_qubits)
+    sim = Simulator("mqvector_gpu", circuit.n_qubits)
     grad_ops = sim.get_expectation_with_grad(
         hams,
         circuit,
-        None,
-        None,
-        encoder.params_name,
-        ansatz.params_name,
     )
     QuantumNet = MQLayer(grad_ops)
 
